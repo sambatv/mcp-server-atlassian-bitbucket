@@ -49,9 +49,18 @@ async function handleRepoClone(args: Record<string, unknown>) {
 }
 
 // Tool description
-const BB_CLONE_DESCRIPTION = `Clone a Bitbucket repository to your local filesystem using SSH (preferred) or HTTPS.
+const BB_CLONE_DESCRIPTION = `Clone a Bitbucket repository to the local filesystem.
 
-Provide \`repoSlug\` and \`targetPath\` (absolute path). Clones into \`targetPath/repoSlug\`. SSH keys must be configured; falls back to HTTPS if unavailable.`;
+Prefers SSH (requires SSH keys configured for bitbucket.org); falls back to HTTPS automatically if SSH fails.
+The repository is cloned into \`{targetPath}/{repoSlug}\`.
+
+Use this when you need to inspect file contents locally, run code, or work with the full repository tree.
+For reading a single file or a PR diff without cloning, use bb_get with \`/repositories/{workspace}/{repo}/src/{commit}/{path}\` or \`/pullrequests/{id}/diff\` instead — it is faster and cheaper.
+
+**If cloning fails:**
+- "Permission denied" → your token lacks \`repository:read\` scope; check ATLASSIAN_API_TOKEN
+- "Repository not found" → verify workspace and repoSlug via \`bb_get /repositories/{workspace}\`
+- SSH fails, HTTPS tried automatically → if HTTPS also fails, check that ATLASSIAN_USER_EMAIL and ATLASSIAN_API_TOKEN are set correctly`;
 
 /**
  * Register all Bitbucket repository tools with the MCP server.
