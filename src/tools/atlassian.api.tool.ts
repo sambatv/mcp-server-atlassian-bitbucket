@@ -124,55 +124,59 @@ const patch = createWriteHandler('PATCH', handlePatch);
 const del = createReadHandler('DELETE', handleDelete);
 
 // Tool descriptions
-const BB_GET_DESCRIPTION = `Read any Bitbucket data. Returns TOON format by default (30-60% fewer tokens than JSON).
+const BB_GET_DESCRIPTION = `Fetch data from any Bitbucket Cloud REST API v2.0 endpoint (read-only).
 
-**IMPORTANT - Cost Optimization:**
-- ALWAYS use \`jq\` param to filter response fields. Unfiltered responses are very expensive!
-- Use \`pagelen\` query param to restrict result count (e.g., \`pagelen: "5"\`)
-- If unsure about available fields, first fetch ONE item with \`pagelen: "1"\` and NO jq filter to explore the schema, then use jq in subsequent calls
-
-**Schema Discovery Pattern:**
-1. First call: \`path: "/workspaces", queryParams: {"pagelen": "1"}\` (no jq) - explore available fields
-2. Then use: \`jq: "values[*].{slug: slug, name: name, uuid: uuid}"\` - extract only what you need
-
-**Output format:** TOON (default, token-efficient) or JSON (\`outputFormat: "json"\`)
+Use for ALL read operations: listing repos, fetching PRs, reading comments, browsing commits, checking CI statuses, inspecting branches, reading file contents, etc.
+Do NOT use to create, update, or delete resources — use bb_post, bb_put, bb_patch, or bb_delete for those.
 
 **Common paths:**
 - \`/workspaces\` - list workspaces
 - \`/repositories/{workspace}\` - list repos in workspace
 - \`/repositories/{workspace}/{repo}\` - get repo details
-- \`/repositories/{workspace}/{repo}/pullrequests\` - list PRs
+- \`/repositories/{workspace}/{repo}/pullrequests\` - list PRs (?state=OPEN|MERGED|DECLINED)
 - \`/repositories/{workspace}/{repo}/pullrequests/{id}\` - get PR details
 - \`/repositories/{workspace}/{repo}/pullrequests/{id}/comments\` - list PR comments
-- \`/repositories/{workspace}/{repo}/pullrequests/{id}/diff\` - get PR diff
+- \`/repositories/{workspace}/{repo}/pullrequests/{id}/diff\` - unified diff
+- \`/repositories/{workspace}/{repo}/pullrequests/{id}/diffstat\` - files changed summary (cheaper than full diff)
+- \`/repositories/{workspace}/{repo}/pullrequests/{id}/statuses\` - CI build statuses
 - \`/repositories/{workspace}/{repo}/refs/branches\` - list branches
 - \`/repositories/{workspace}/{repo}/commits\` - list commits
-- \`/repositories/{workspace}/{repo}/src/{commit}/{filepath}\` - get file content
+- \`/repositories/{workspace}/{repo}/src/{commit}/{filepath}\` - read a single file
 - \`/repositories/{workspace}/{repo}/diff/{source}..{destination}\` - compare branches/commits
+- \`/user\` - current authenticated user (useful for getting your own account_id)
 
 **Query params:** \`pagelen\` (page size), \`page\` (page number), \`q\` (filter), \`sort\` (order), \`fields\` (sparse response)
 
-**Example filters (q param):** \`state="OPEN"\`, \`source.branch.name="feature"\`, \`title~"bug"\`
+**Pagination:** Responses include \`size\` (total count) and \`next\` (URL present when more pages exist). Increment \`page\` to navigate forward.
+
+**Example filters (q param):** \`state="OPEN"\`, \`source.branch.name="feature"\`, \`title~"bug"\`, \`author.display_name~"Franco"\`
+
+**Cost optimization:**
+- ALWAYS use \`jq\` to filter fields — unfiltered responses are expensive
+- Use \`pagelen\` to limit result count (e.g., \`pagelen: "5"\`)
+- For large diffs, use \`/diffstat\` first to understand scope before fetching the full \`/diff\`
+- Schema discovery: fetch ONE item with \`pagelen: "1"\` and no jq to explore fields, then filter in subsequent calls
 
 **JQ examples:** \`values[*].slug\`, \`values[0]\`, \`values[*].{name: name, uuid: uuid}\`
 
+**Output format:** TOON (default, token-efficient) or JSON (\`outputFormat: "json"\`)
+
 The \`/2.0\` prefix is added automatically. API reference: https://developer.atlassian.com/cloud/bitbucket/rest/`;
 
-const BB_POST_DESCRIPTION = `Create Bitbucket resources. Returns TOON format by default (token-efficient).
+const BB_POST_DESCRIPTION = `Create a new resource or trigger an action in Bitbucket Cloud (HTTP POST).
 
-**IMPORTANT - Cost Optimization:**
-- Use \`jq\` param to extract only needed fields from response (e.g., \`jq: "{id: id, title: title}"\`)
-- Unfiltered responses include all metadata and are expensive!
-
-**Output format:** TOON (default) or JSON (\`outputFormat: "json"\`)
+Use for: opening PRs, posting comments, approving PRs, merging, declining, requesting changes, creating webhooks, creating branch restrictions.
+Do NOT use to update existing resources — use bb_put (full replace) or bb_patch (partial update) instead.
 
 **Common operations:**
 
 1. **Create PR:** \`/repositories/{workspace}/{repo}/pullrequests\`
    body: \`{"title": "...", "source": {"branch": {"name": "feature"}}, "destination": {"branch": {"name": "main"}}}\`
+   Optional: \`"description"\`, \`"reviewers": [{"uuid": "..."}]\`, \`"draft": true\`
 
 2. **Add PR comment:** \`/repositories/{workspace}/{repo}/pullrequests/{id}/comments\`
    body: \`{"content": {"raw": "Comment text"}}\`
+   For inline code comments add: \`"inline": {"path": "src/file.py", "to": 42}\`
 
 3. **Approve PR:** \`/repositories/{workspace}/{repo}/pullrequests/{id}/approve\`
    body: \`{}\`
@@ -180,67 +184,91 @@ const BB_POST_DESCRIPTION = `Create Bitbucket resources. Returns TOON format by 
 4. **Request changes:** \`/repositories/{workspace}/{repo}/pullrequests/{id}/request-changes\`
    body: \`{}\`
 
-5. **Merge PR:** \`/repositories/{workspace}/{repo}/pullrequests/{id}/merge\`
+5. **Decline PR:** \`/repositories/{workspace}/{repo}/pullrequests/{id}/decline\`
+   body: \`{}\` (closes without merging — use POST, not DELETE)
+
+6. **Merge PR:** \`/repositories/{workspace}/{repo}/pullrequests/{id}/merge\`
    body: \`{"merge_strategy": "squash"}\` (strategies: merge_commit, squash, fast_forward)
 
-The \`/2.0\` prefix is added automatically. API reference: https://developer.atlassian.com/cloud/bitbucket/rest/`;
+**Response:** Contains the created resource including its ID — use that ID in subsequent bb_get, bb_patch, or bb_put calls.
 
-const BB_PUT_DESCRIPTION = `Replace Bitbucket resources (full update). Returns TOON format by default.
-
-**IMPORTANT - Cost Optimization:**
-- Use \`jq\` param to extract only needed fields from response
-- Example: \`jq: "{uuid: uuid, name: name}"\`
+**Cost optimization:** Use \`jq\` to extract only needed fields (e.g., \`jq: "{id: id, title: title}"\`)
 
 **Output format:** TOON (default) or JSON (\`outputFormat: "json"\`)
 
+The \`/2.0\` prefix is added automatically. API reference: https://developer.atlassian.com/cloud/bitbucket/rest/`;
+
+const BB_PUT_DESCRIPTION = `Fully replace a Bitbucket resource (HTTP PUT — all required fields must be sent).
+
+Use when replacing a resource wholesale. If you only need to change one or two fields, use bb_patch instead — it is safer and avoids accidentally blanking fields you did not intend to change.
+Always use bb_get to fetch the current state first so you can include all required fields in the body.
+
 **Common operations:**
 
-1. **Update repository:** \`/repositories/{workspace}/{repo}\`
-   body: \`{"description": "...", "is_private": true, "has_issues": true}\`
+1. **Update PR (full replace):** \`/repositories/{workspace}/{repo}/pullrequests/{id}\`
+   body must include all required fields: \`{"title": "...", "source": {"branch": {"name": "..."}}, "destination": {"branch": {"name": "..."}}}\`
 
-2. **Create/update file:** \`/repositories/{workspace}/{repo}/src\`
-   Note: Use multipart form data for file uploads (complex - prefer PATCH for metadata)
+2. **Update repository settings:** \`/repositories/{workspace}/{repo}\`
+   body: \`{"description": "...", "is_private": true, "has_issues": true}\`
 
 3. **Update branch restriction:** \`/repositories/{workspace}/{repo}/branch-restrictions/{id}\`
    body: \`{"kind": "push", "pattern": "main", "users": [{"uuid": "..."}]}\`
 
-The \`/2.0\` prefix is added automatically. API reference: https://developer.atlassian.com/cloud/bitbucket/rest/`;
-
-const BB_PATCH_DESCRIPTION = `Partially update Bitbucket resources. Returns TOON format by default.
-
-**IMPORTANT - Cost Optimization:** Use \`jq\` param to filter response fields.
+**Cost optimization:** Use \`jq\` to extract only needed fields from the response.
 
 **Output format:** TOON (default) or JSON (\`outputFormat: "json"\`)
 
+The \`/2.0\` prefix is added automatically. API reference: https://developer.atlassian.com/cloud/bitbucket/rest/`;
+
+const BB_PATCH_DESCRIPTION = `Partially update a Bitbucket resource (HTTP PATCH — send only the fields you want to change).
+
+Prefer this over bb_put whenever you only need to update specific fields. You do not need to fetch the full resource first — just send the fields you want to change.
+Do NOT use bb_put when bb_patch is sufficient.
+
 **Common operations:**
 
-1. **Update PR title/description:** \`/repositories/{workspace}/{repo}/pullrequests/{id}\`
-   body: \`{"title": "New title", "description": "Updated description"}\`
+1. **Update PR title or description:** \`/repositories/{workspace}/{repo}/pullrequests/{id}\`
+   body: \`{"title": "New title"}\` or \`{"description": "Updated description"}\`
 
 2. **Update PR reviewers:** \`/repositories/{workspace}/{repo}/pullrequests/{id}\`
    body: \`{"reviewers": [{"uuid": "{user-uuid}"}]}\`
 
-3. **Update repository properties:** \`/repositories/{workspace}/{repo}\`
+3. **Update repository description:** \`/repositories/{workspace}/{repo}\`
    body: \`{"description": "New description"}\`
 
-4. **Update comment:** \`/repositories/{workspace}/{repo}/pullrequests/{pr_id}/comments/{comment_id}\`
-   body: \`{"content": {"raw": "Updated comment"}}\`
+4. **Update a comment:** \`/repositories/{workspace}/{repo}/pullrequests/{pr_id}/comments/{comment_id}\`
+   body: \`{"content": {"raw": "Updated comment text"}}\`
 
-The \`/2.0\` prefix is added automatically. API reference: https://developer.atlassian.com/cloud/bitbucket/rest/`;
-
-const BB_DELETE_DESCRIPTION = `Delete Bitbucket resources. Returns TOON format by default.
+**Cost optimization:** Use \`jq\` to extract only needed fields from the response.
 
 **Output format:** TOON (default) or JSON (\`outputFormat: "json"\`)
 
+The \`/2.0\` prefix is added automatically. API reference: https://developer.atlassian.com/cloud/bitbucket/rest/`;
+
+const BB_DELETE_DESCRIPTION = `Remove a resource from Bitbucket Cloud (HTTP DELETE).
+
+Use for: removing your PR approval, deleting a comment, deleting a branch, removing a branch restriction, deleting a webhook, or deleting a repository.
+WARNING: Most deletions are irreversible. Always confirm the exact resource ID with bb_get before deleting.
+
+Do NOT use to decline a PR — that is a POST to \`/pullrequests/{id}/decline\`, not a DELETE.
+
 **Common operations:**
 
-1. **Delete branch:** \`/repositories/{workspace}/{repo}/refs/branches/{branch_name}\`
-2. **Delete PR comment:** \`/repositories/{workspace}/{repo}/pullrequests/{pr_id}/comments/{comment_id}\`
-3. **Decline PR:** \`/repositories/{workspace}/{repo}/pullrequests/{id}/decline\`
-4. **Remove PR approval:** \`/repositories/{workspace}/{repo}/pullrequests/{id}/approve\`
-5. **Delete repository:** \`/repositories/{workspace}/{repo}\` (caution: irreversible)
+1. **Remove PR approval:** \`/repositories/{workspace}/{repo}/pullrequests/{id}/approve\`
+   (removes your approval — use bb_post to the same path to re-approve)
 
-Note: Most DELETE endpoints return 204 No Content on success.
+2. **Delete PR comment:** \`/repositories/{workspace}/{repo}/pullrequests/{pr_id}/comments/{comment_id}\`
+
+3. **Delete branch:** \`/repositories/{workspace}/{repo}/refs/branches/{branch_name}\`
+
+4. **Delete webhook:** \`/repositories/{workspace}/{repo}/hooks/{uid}\`
+
+5. **Delete repository:** \`/repositories/{workspace}/{repo}\`
+   IRREVERSIBLE — confirm workspace and repo with bb_get first
+
+**Response:** Returns 204 No Content on success (no body).
+
+**Output format:** TOON (default) or JSON (\`outputFormat: "json"\`)
 
 The \`/2.0\` prefix is added automatically. API reference: https://developer.atlassian.com/cloud/bitbucket/rest/`;
 
