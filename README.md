@@ -2,8 +2,7 @@
 
 Transform how you work with Bitbucket by connecting Claude, Cursor AI, and other AI assistants directly to your repositories, pull requests, and code. Get instant insights, automate code reviews, and streamline your development workflow.
 
-[![NPM Version](https://img.shields.io/npm/v/@aashari/mcp-server-atlassian-bitbucket)](https://www.npmjs.com/package/@aashari/mcp-server-atlassian-bitbucket)
-[![License](https://img.shields.io/npm/l/@aashari/mcp-server-atlassian-bitbucket)](https://github.com/aashari/mcp-server-atlassian-bitbucket/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/sambatv/mcp-server-atlassian-bitbucket)](https://github.com/sambatv/mcp-server-atlassian-bitbucket/blob/main/LICENSE)
 
 ## What You Can Do
 
@@ -73,19 +72,31 @@ export ATLASSIAN_BITBUCKET_USERNAME="your_username"
 export ATLASSIAN_BITBUCKET_APP_PASSWORD="your_app_password"
 
 # List your workspaces
-npx -y @aashari/mcp-server-atlassian-bitbucket get --path "/workspaces"
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get --path "/workspaces"
 
 # List repositories in a workspace
-npx -y @aashari/mcp-server-atlassian-bitbucket get --path "/repositories/your-workspace"
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get --path "/repositories/your-workspace"
 
 # Get pull requests for a repository
-npx -y @aashari/mcp-server-atlassian-bitbucket get --path "/repositories/your-workspace/your-repo/pullrequests"
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get --path "/repositories/your-workspace/your-repo/pullrequests"
 
 # Get repository details with JMESPath filtering
-npx -y @aashari/mcp-server-atlassian-bitbucket get --path "/repositories/your-workspace/your-repo" --jq "{name: name, language: language}"
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get --path "/repositories/your-workspace/your-repo" --jq "{name: name, language: language}"
 ```
 
 ## Connect to AI Assistants
+
+### For Claude Code Users
+
+Add the MCP server with a single command:
+
+```bash
+claude mcp add bitbucket \
+  -e BITBUCKET_DEFAULT_WORKSPACE=sambatv \
+  -e ATLASSIAN_USER_EMAIL=$ATLASSIAN_USER_EMAIL \
+  -e ATLASSIAN_API_TOKEN=$ATLASSIAN_API_TOKEN \
+  -- npx -y github:sambatv/mcp-server-atlassian-bitbucket
+```
 
 ### For Claude Desktop Users
 
@@ -97,7 +108,7 @@ Add this to your Claude configuration file (`~/.claude/claude_desktop_config.jso
   "mcpServers": {
     "bitbucket": {
       "command": "npx",
-      "args": ["-y", "@aashari/mcp-server-atlassian-bitbucket"],
+      "args": ["-y", "github:sambatv/mcp-server-atlassian-bitbucket"],
       "env": {
         "ATLASSIAN_USER_EMAIL": "your.email@company.com",
         "ATLASSIAN_API_TOKEN": "your_scoped_api_token"
@@ -113,7 +124,7 @@ Add this to your Claude configuration file (`~/.claude/claude_desktop_config.jso
   "mcpServers": {
     "bitbucket": {
       "command": "npx",
-      "args": ["-y", "@aashari/mcp-server-atlassian-bitbucket"],
+      "args": ["-y", "github:sambatv/mcp-server-atlassian-bitbucket"],
       "env": {
         "ATLASSIAN_BITBUCKET_USERNAME": "your_username",
         "ATLASSIAN_BITBUCKET_APP_PASSWORD": "your_app_password"
@@ -130,11 +141,11 @@ Restart Claude Desktop, and you'll see the bitbucket server in the status bar.
 Most AI assistants support MCP. You can either:
 
 **Option 1: Use npx (recommended - always latest version):**
-Configure your AI assistant to run: `npx -y @aashari/mcp-server-atlassian-bitbucket`
+Configure your AI assistant to run: `npx -y github:sambatv/mcp-server-atlassian-bitbucket`
 
 **Option 2: Install globally:**
 ```bash
-npm install -g @aashari/mcp-server-atlassian-bitbucket
+npm install -g github:sambatv/mcp-server-atlassian-bitbucket
 ```
 
 Then configure your AI assistant to use the MCP server with STDIO transport.
@@ -176,7 +187,7 @@ Create `~/.mcp/configs.json` for system-wide configuration:
 }
 ```
 
-**Alternative config keys:** The system also accepts `"atlassian-bitbucket"`, `"@aashari/mcp-server-atlassian-bitbucket"`, or `"mcp-server-atlassian-bitbucket"` instead of `"bitbucket"`.
+**Alternative config keys:** The system also accepts `"atlassian-bitbucket"` or `"mcp-server-atlassian-bitbucket"` instead of `"bitbucket"`.
 
 ## Available Tools
 
@@ -267,22 +278,22 @@ All tools support optional JMESPath (`jq`) filtering to extract specific data an
 
 ```bash
 # Get just repository names
-npx -y @aashari/mcp-server-atlassian-bitbucket get \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get \
   --path "/repositories/myworkspace" \
   --jq "values[].name"
 
 # Get PR titles and states (custom object shape)
-npx -y @aashari/mcp-server-atlassian-bitbucket get \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get \
   --path "/repositories/myworkspace/myrepo/pullrequests" \
   --jq "values[].{title: title, state: state, author: author.display_name}"
 
 # Get first result only
-npx -y @aashari/mcp-server-atlassian-bitbucket get \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get \
   --path "/repositories/myworkspace" \
   --jq "values[0]"
 
 # Explore schema with one item first, then filter
-npx -y @aashari/mcp-server-atlassian-bitbucket get \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get \
   --path "/workspaces" \
   --query-params '{"pagelen": "1"}'
 ```
@@ -336,24 +347,24 @@ Ask your AI assistant:
 
 ```bash
 # Filter PRs by state
-npx -y @aashari/mcp-server-atlassian-bitbucket get \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get \
   --path "/repositories/workspace/repo/pullrequests" \
   --query-params '{"state": "OPEN", "pagelen": "5"}' \
   --jq "values[*].{id: id, title: title}"
 
 # Search PRs by title
-npx -y @aashari/mcp-server-atlassian-bitbucket get \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get \
   --path "/repositories/workspace/repo/pullrequests" \
   --query-params '{"q": "title~\"bug\""}' \
   --jq "values[*].{id: id, title: title}"
 
 # Filter repositories by role
-npx -y @aashari/mcp-server-atlassian-bitbucket get \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get \
   --path "/repositories/workspace" \
   --query-params '{"role": "owner", "pagelen": "10"}'
 
 # Sort by updated date
-npx -y @aashari/mcp-server-atlassian-bitbucket get \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get \
   --path "/repositories/workspace/repo/pullrequests" \
   --query-params '{"sort": "-updated_on"}' \
   --jq "values[*].{id: id, title: title, updated: updated_on}"
@@ -370,7 +381,7 @@ When dealing with APIs that return large payloads:
 
 Example combining all techniques:
 ```bash
-npx -y @aashari/mcp-server-atlassian-bitbucket get \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get \
   --path "/repositories/workspace/repo/pullrequests" \
   --query-params '{"state": "OPEN", "pagelen": "10", "fields": "values.id,values.title,values.state"}' \
   --jq "values[*].{id: id, title: title}"
@@ -392,48 +403,48 @@ The CLI mirrors the MCP tools for direct terminal access. All commands return JS
 
 ```bash
 # Get help
-npx -y @aashari/mcp-server-atlassian-bitbucket --help
+npx -y github:sambatv/mcp-server-atlassian-bitbucket --help
 
 # GET request
-npx -y @aashari/mcp-server-atlassian-bitbucket get \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get \
   --path "/workspaces" \
   --jq "values[*].{name: name, slug: slug}"
 
 # GET with query parameters
-npx -y @aashari/mcp-server-atlassian-bitbucket get \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket get \
   --path "/repositories/myworkspace/myrepo/pullrequests" \
   --query-params '{"state": "OPEN", "pagelen": "10"}' \
   --jq "values[*].{id: id, title: title}"
 
 # POST request (create a PR)
-npx -y @aashari/mcp-server-atlassian-bitbucket post \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket post \
   --path "/repositories/myworkspace/myrepo/pullrequests" \
   --body '{"title": "My PR", "source": {"branch": {"name": "feature"}}, "destination": {"branch": {"name": "main"}}}' \
   --jq "{id: id, title: title}"
 
 # POST with query parameters
-npx -y @aashari/mcp-server-atlassian-bitbucket post \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket post \
   --path "/repositories/myworkspace/myrepo/pullrequests/42/comments" \
   --body '{"content": {"raw": "Looks good!"}}' \
   --query-params '{"fields": "id,content"}' \
   --jq "{id: id, content: content.raw}"
 
 # PUT request (replace resource)
-npx -y @aashari/mcp-server-atlassian-bitbucket put \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket put \
   --path "/repositories/myworkspace/myrepo" \
   --body '{"description": "Updated description", "is_private": true}'
 
 # PATCH request (partial update)
-npx -y @aashari/mcp-server-atlassian-bitbucket patch \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket patch \
   --path "/repositories/myworkspace/myrepo/pullrequests/123" \
   --body '{"title": "Updated PR title"}'
 
 # DELETE request
-npx -y @aashari/mcp-server-atlassian-bitbucket delete \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket delete \
   --path "/repositories/myworkspace/myrepo/refs/branches/old-branch"
 
 # Clone repository
-npx -y @aashari/mcp-server-atlassian-bitbucket clone \
+npx -y github:sambatv/mcp-server-atlassian-bitbucket clone \
   --workspace-slug myworkspace \
   --repo-slug myrepo \
   --target-path /absolute/path/to/parent/directory
@@ -465,14 +476,14 @@ Set the `DEBUG` environment variable to see detailed logging:
 
 ```bash
 # For CLI testing
-DEBUG=true npx -y @aashari/mcp-server-atlassian-bitbucket get --path "/workspaces"
+DEBUG=true npx -y github:sambatv/mcp-server-atlassian-bitbucket get --path "/workspaces"
 
 # For Claude Desktop - add to config
 {
   "mcpServers": {
     "bitbucket": {
       "command": "npx",
-      "args": ["-y", "@aashari/mcp-server-atlassian-bitbucket"],
+      "args": ["-y", "github:sambatv/mcp-server-atlassian-bitbucket"],
       "env": {
         "DEBUG": "true",
         "ATLASSIAN_USER_EMAIL": "...",
@@ -483,7 +494,7 @@ DEBUG=true npx -y @aashari/mcp-server-atlassian-bitbucket get --path "/workspace
 }
 ```
 
-**Log files:** When running in MCP mode, logs are written to `~/.mcp/data/@aashari-mcp-server-atlassian-bitbucket.[session-id].log`
+**Log files:** When running in MCP mode, logs are written to `~/.mcp/data/mcp-server-atlassian-bitbucket.[session-id].log`
 
 ### Test with HTTP Mode
 
@@ -496,7 +507,7 @@ export ATLASSIAN_API_TOKEN="your_token"
 export DEBUG=true
 
 # Start HTTP server with MCP Inspector
-npx -y @aashari/mcp-server-atlassian-bitbucket
+npx -y github:sambatv/mcp-server-atlassian-bitbucket
 # Then in another terminal:
 PORT=3000 npm run mcp:inspect
 ```
@@ -539,7 +550,7 @@ This opens a visual interface to test tools and see request/response data.
    # Test credentials with CLI
    export ATLASSIAN_USER_EMAIL="your.email@company.com"
    export ATLASSIAN_API_TOKEN="your_token"
-   npx -y @aashari/mcp-server-atlassian-bitbucket get --path "/workspaces"
+   npx -y github:sambatv/mcp-server-atlassian-bitbucket get --path "/workspaces"
    ```
 
 5. **Environment variable naming**:
@@ -557,7 +568,7 @@ This opens a visual interface to test tools and see request/response data.
 2. **Verify the resource exists**:
    ```bash
    # List workspaces to find the correct slug
-   npx -y @aashari/mcp-server-atlassian-bitbucket get --path "/workspaces"
+   npx -y github:sambatv/mcp-server-atlassian-bitbucket get --path "/workspaces"
    ```
 
 ### Claude Desktop Integration Issues
@@ -571,7 +582,7 @@ This opens a visual interface to test tools and see request/response data.
 
 If you're still having issues:
 1. Run a simple test command to verify everything works
-2. Check the [GitHub Issues](https://github.com/aashari/mcp-server-atlassian-bitbucket/issues) for similar problems
+2. Check the [GitHub Issues](https://github.com/sambatv/mcp-server-atlassian-bitbucket/issues) for similar problems
 3. Create a new issue with your error message and setup details
 
 ## Frequently Asked Questions
@@ -650,8 +661,8 @@ bb_get, bb_post, bb_put, bb_patch, bb_delete, bb_clone
 Need help? Here's how to get assistance:
 
 1. **Check the troubleshooting section above** - most common issues are covered there
-2. **Visit our GitHub repository** for documentation and examples: [github.com/aashari/mcp-server-atlassian-bitbucket](https://github.com/aashari/mcp-server-atlassian-bitbucket)
-3. **Report issues** at [GitHub Issues](https://github.com/aashari/mcp-server-atlassian-bitbucket/issues)
+2. **Visit our GitHub repository** for documentation and examples: [github.com/sambatv/mcp-server-atlassian-bitbucket](https://github.com/sambatv/mcp-server-atlassian-bitbucket)
+3. **Report issues** at [GitHub Issues](https://github.com/sambatv/mcp-server-atlassian-bitbucket/issues)
 4. **Start a discussion** for feature requests or general questions
 
 ---
